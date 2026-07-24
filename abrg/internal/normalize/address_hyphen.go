@@ -202,90 +202,24 @@ func hasASCIIDigit(s string) bool {
 	return false
 }
 
-// scanAddressMarkers scans the string once and returns whether any Japanese
-// address marker is found and whether a floor pattern (digit followed by 'F') is found.
-func scanAddressMarkers(s string) (hasMarker, hasFloor bool) {
-	n := len(s)
-	prevDigit := false
-	for i := range n {
-		b := s[i]
-		// Check for 'F' preceded by digit (floor pattern like "5F")
-		if b == 'F' && prevDigit {
-			hasFloor = true
-			if hasMarker {
-				return
-			}
-		}
-		prevDigit = util.IsASCIIDigit(b)
+// addressMarkers are the Japanese markers that indicate a house/block/room part
+// of an address: 丁目 番 号 の ノ 室 階 棟 町.
+var addressMarkers = []string{"丁目", "番", "号", "の", "ノ", "室", "階", "棟", "町"}
 
-		// Check for Japanese characters (3-byte UTF-8)
-		if i+2 >= n {
-			continue
+// scanAddressMarkers reports whether the string contains any Japanese address
+// marker and whether it contains a floor pattern (a digit followed by 'F').
+func scanAddressMarkers(s string) (hasMarker, hasFloor bool) {
+	prevDigit := false
+	for i := range len(s) {
+		if s[i] == 'F' && prevDigit {
+			hasFloor = true
 		}
-		// Japanese address markers (UTF-8 encoded):
-		// 番: E7 95 AA, 号: E5 8F B7, の: E3 81 AE, ノ: E3 83 8E
-		// 室: E5 AE A4, 階: E9 9A 8E, 棟: E6 A3 9F, 町: E7 94 BA
-		// 丁目: E4 B8 81 E7 9B AE (check as 6-byte sequence)
-		switch b {
-		case 0xE4:
-			// 丁目 (E4 B8 81 E7 9B AE)
-			if i+5 < n && s[i+1] == 0xB8 && s[i+2] == 0x81 &&
-				s[i+3] == 0xE7 && s[i+4] == 0x9B && s[i+5] == 0xAE {
-				hasMarker = true
-				if hasFloor {
-					return
-				}
-			}
-		case 0xE7:
-			if s[i+1] == 0x95 && s[i+2] == 0xAA { // 番
-				hasMarker = true
-				if hasFloor {
-					return
-				}
-			} else if s[i+1] == 0x94 && s[i+2] == 0xBA { // 町
-				hasMarker = true
-				if hasFloor {
-					return
-				}
-			}
-		case 0xE5:
-			if s[i+1] == 0x8F && s[i+2] == 0xB7 { // 号
-				hasMarker = true
-				if hasFloor {
-					return
-				}
-			} else if s[i+1] == 0xAE && s[i+2] == 0xA4 { // 室
-				hasMarker = true
-				if hasFloor {
-					return
-				}
-			}
-		case 0xE3:
-			if s[i+1] == 0x81 && s[i+2] == 0xAE { // の
-				hasMarker = true
-				if hasFloor {
-					return
-				}
-			} else if s[i+1] == 0x83 && s[i+2] == 0x8E { // ノ
-				hasMarker = true
-				if hasFloor {
-					return
-				}
-			}
-		case 0xE9:
-			if s[i+1] == 0x9A && s[i+2] == 0x8E { // 階
-				hasMarker = true
-				if hasFloor {
-					return
-				}
-			}
-		case 0xE6:
-			if s[i+1] == 0xA3 && s[i+2] == 0x9F { // 棟
-				hasMarker = true
-				if hasFloor {
-					return
-				}
-			}
+		prevDigit = util.IsASCIIDigit(s[i])
+	}
+	for _, m := range addressMarkers {
+		if strings.Contains(s, m) {
+			hasMarker = true
+			break
 		}
 	}
 	return
